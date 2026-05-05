@@ -43,5 +43,8 @@ dist/
 # Logs
 *.log
 
-# Local Claude Code session settings (personal allowlist, paths)
+# Local editor / tooling settings (personal, not portable)
 .claude/
+
+# Drafts not meant to be shipped with the repo
+linkedin-post.md

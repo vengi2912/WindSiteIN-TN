@@ -4,14 +4,13 @@ Run via: `python -m pipeline.refresh`
 or:      `make refresh` (from pipeline/)
 
 Steps:
-  1. Pull OSM data per voltage class via Overpass.
-  2. Pull substations + generation plants via Overpass.
-  3. Load PyPSA-Earth Pakistan snapshot (cached).
-  4. Merge sources + apply overrides.
-  5. Validate.
-  6. Simplify.
-  7. Write GeoJSON + meta.json to site/data/.
-  8. Print regression warnings.
+  1. One country-wide Overpass query for all power lines in PK.
+  2. Bucket lines by voltage in Python (handles tag variance, multi-circuit).
+  3. Pull substations + generation plants via Overpass.
+  4. Validate.
+  5. Simplify.
+  6. Write GeoJSON + meta.json to site/data/.
+  7. Print regression warnings.
 """
 
 from __future__ import annotations
@@ -21,8 +20,12 @@ from datetime import datetime, timezone
 
 from pipeline import overpass
 from pipeline.export import copy_reference_files, write_feature_collection, write_meta
-from pipeline.merge import merge_generation, merge_lines, merge_substations
-from pipeline.pypsa_earth import load_pakistan_subset
+from pipeline.merge import (
+    build_relation_voltage_map,
+    bucket_lines_by_voltage,
+    merge_generation,
+    merge_substations,
+)
 from pipeline.simplify import line_length_km, simplify_line_features
 from pipeline.validate import regression_check, validate_lines
 from pipeline.voltage_classes import load_voltage_classes
@@ -35,19 +38,26 @@ def main() -> int:
     copy_reference_files()
     print("[refresh] copied reference files into site/data/")
 
-    pypsa = load_pakistan_subset()
-    print(f"[refresh] pypsa-earth: {len(pypsa.lines)} lines, {len(pypsa.buses)} buses")
+    print("[refresh] fetching all power lines in PK (single query)...")
+    lines_result = overpass.query_all_lines_pk()
+    raw_count = len(lines_result.raw.get("elements", []))
+    print(f"[refresh] received {raw_count} raw power ways")
+
+    print("[refresh] fetching power route relations for voltage propagation...")
+    rel_result = overpass.query_route_relations_pk()
+    rel_voltage_map = build_relation_voltage_map(rel_result)
+    print(f"[refresh] {len(rel_voltage_map)} ways inherit voltage from a parent relation")
+
+    buckets = bucket_lines_by_voltage(lines_result, rel_voltage_map)
 
     voltage_classes = load_voltage_classes()
     line_counts: dict[str, int] = {}
     line_lengths_km: dict[str, float] = {}
 
     for vc in voltage_classes:
-        print(f"[refresh] {vc.id}: querying overpass...")
-        osm_result = overpass.query_lines_for_voltage(vc)
-        merged = merge_lines(vc, osm_result, pypsa)
-        validate_lines(merged, vc)
-        simplified = simplify_line_features(merged)
+        features = buckets[vc.id]
+        validate_lines(features, vc)
+        simplified = simplify_line_features(features)
         write_feature_collection(vc.geojson_filename, simplified)
         line_counts[vc.id] = len(simplified)
         line_lengths_km[vc.id] = line_length_km(simplified)
@@ -70,7 +80,6 @@ def main() -> int:
     write_meta(
         {
             "built_at": started_at,
-            "pypsa_earth_sha": pypsa.source_sha,
             "line_counts": line_counts,
             "line_lengths_km": {k: round(v, 1) for k, v in line_lengths_km.items()},
             "substation_count": len(substations),

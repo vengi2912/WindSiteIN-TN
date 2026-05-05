@@ -1,10 +1,15 @@
 """Overpass API queries for Pakistan transmission infrastructure.
 
-We query one voltage class at a time so a slow/timed-out query doesn't poison
-the whole refresh. Results are cached on disk under pipeline/.cache/ so reruns
-during development are fast.
+We do ONE country-wide query for power=line / minor_line / cable in PK, then
+bucket by voltage in Python (see merge.py + voltage_parser.py). This is more
+robust than per-voltage Overpass regex queries because OSM tagging is
+inconsistent (units, typos, semicolons). It also lets us see lines without
+voltage tags.
 
-Overpass endpoints rotate; if the primary times out we fall back to mirrors.
+Substations and generation plants get separate queries.
+
+Endpoints rotate; if the primary times out we fall back to mirrors. Results
+are cached on disk under pipeline/.cache/ so reruns are fast.
 """
 
 from __future__ import annotations
@@ -17,7 +22,6 @@ from dataclasses import dataclass
 import requests
 
 from pipeline._paths import PIPELINE_CACHE
-from pipeline.voltage_classes import VoltageClass
 
 OVERPASS_ENDPOINTS: tuple[str, ...] = (
     "https://overpass-api.de/api/interpreter",
@@ -31,57 +35,60 @@ RETRY_BACKOFF_S = (5, 15, 45)
 
 @dataclass(frozen=True)
 class OverpassResult:
-    voltage_class_id: str
+    label: str
     raw: dict
     fetched_at: str  # ISO 8601
 
 
-def query_lines_for_voltage(vc: VoltageClass) -> OverpassResult:
-    """Fetch all `power=line` and `power=cable` ways in PK matching this voltage class.
+def query_all_lines_pk() -> OverpassResult:
+    """Fetch every power line / minor_line / cable way in Pakistan.
 
-    HVDC is identified by frequency=0 (DC). All other classes match the exact
-    voltage value (or that value within a semicolon-separated list).
+    Voltage is NOT filtered server-side; we bucket in Python afterwards.
     """
-    if vc.is_hvdc:
-        body = _hvdc_query()
-    else:
-        body = _ac_voltage_query(vc.voltage_v)
-    return _fetch_or_cache(f"lines_{vc.id}", body, vc.id)
+    return _fetch_or_cache("lines_all", _all_lines_query(), "lines_all")
+
+
+def query_route_relations_pk() -> OverpassResult:
+    """Fetch all `type=route route=power` relations in PK with member ids.
+
+    Lets us propagate voltage from a relation to its member ways when the
+    way itself lacks a voltage tag.
+    """
+    return _fetch_or_cache("route_relations", _route_relations_query(), "route_relations")
 
 
 def query_substations_pk() -> OverpassResult:
     """Fetch all `power=substation` features in Pakistan."""
-    body = _substations_query()
-    return _fetch_or_cache("substations", body, "substations")
+    return _fetch_or_cache("substations", _substations_query(), "substations")
 
 
 def query_generation_pk() -> OverpassResult:
-    """Fetch all `power=plant` features in Pakistan."""
-    body = _generation_query()
-    return _fetch_or_cache("generation", body, "generation")
+    """Fetch all `power=plant` features in Pakistan (NOT individual generators
+    like rooftop solar; those are filtered out at the merge stage)."""
+    return _fetch_or_cache("generation", _generation_query(), "generation")
 
 
-def _ac_voltage_query(voltage_v: int) -> str:
+def _all_lines_query() -> str:
     return f"""
     [out:json][timeout:{REQUEST_TIMEOUT_S - 30}];
     area["ISO3166-1"="PK"][admin_level=2]->.pk;
     (
-      way(area.pk)["power"="line"]["voltage"~"(^|;){voltage_v}(;|$)"];
-      way(area.pk)["power"="cable"]["voltage"~"(^|;){voltage_v}(;|$)"];
+      way(area.pk)["power"="line"];
+      way(area.pk)["power"="minor_line"];
+      way(area.pk)["power"="cable"];
     );
     out geom tags;
     """.strip()
 
 
-def _hvdc_query() -> str:
+def _route_relations_query() -> str:
+    # `out body` returns each relation with its tags AND its member references
+    # (way ids), which is exactly what we need for voltage propagation.
     return f"""
     [out:json][timeout:{REQUEST_TIMEOUT_S - 30}];
     area["ISO3166-1"="PK"][admin_level=2]->.pk;
-    (
-      way(area.pk)["power"="line"]["frequency"="0"];
-      way(area.pk)["power"="cable"]["frequency"="0"];
-    );
-    out geom tags;
+    relation(area.pk)["type"="route"]["route"="power"];
+    out body;
     """.strip()
 
 

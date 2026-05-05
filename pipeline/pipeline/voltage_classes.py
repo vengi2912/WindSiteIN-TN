@@ -21,6 +21,7 @@ class VoltageClass:
     is_hvdc: bool
     color: str
     line_dash: list[int] | None
+    default_visible: bool
     min_zoom_visible: int
     geojson_filename: str
 

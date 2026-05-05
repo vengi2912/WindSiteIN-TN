@@ -3,10 +3,18 @@
 from pipeline.voltage_classes import by_id, load_voltage_classes
 
 
-def test_loads_all_six_classes():
+def test_loads_all_classes():
     classes = load_voltage_classes()
     ids = [c.id for c in classes]
-    assert ids == ["765kv", "500kv", "hvdc", "220kv", "132kv", "66kv"]
+    # 765 kV omitted: no PK lines tagged at that voltage in OSM.
+    # 'unknown' bucket dropped: lines without a parseable canonical voltage
+    # are dropped from the output rather than shown ambiguously.
+    assert ids == ["500kv", "hvdc", "220kv", "132kv", "66kv"]
+
+
+def test_all_classes_visible_by_default():
+    for c in load_voltage_classes():
+        assert c.default_visible is True
 
 
 def test_hvdc_flagged_correctly():

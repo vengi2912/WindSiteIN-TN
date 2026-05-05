@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="OpenGridPK — Pakistan's transmission grid, on one map">
+  <title>OpenGridPK</title>
+  <desc>Pakistan's transmission grid, on one map. By Saddam Hussain.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fafaf7"/>
+      <stop offset="1" stop-color="#eef0ec"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.7" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="soft" x="-2%" y="-2%" width="104%" height="104%">
+      <feGaussianBlur stdDeviation="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- abstract grid lines: layered strokes evoking a transmission network.
+       drawn left-to-right, fading on the right so the title block reads cleanly -->
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#soft)" opacity="0.95">
+    <!-- 500 kV (orange) -->
+    <path d="M -20 110 C 200 120, 360 90, 540 130 S 880 200, 1110 170" stroke="#F46036" stroke-width="6"/>
+    <path d="M 60 220 C 240 200, 420 240, 620 230 S 940 260, 1180 240" stroke="#F46036" stroke-width="5"/>
+
+    <!-- HVDC (black, dashed) -->
+    <path d="M -20 380 C 220 360, 460 420, 700 400 S 1020 360, 1260 400" stroke="#000000" stroke-width="5" stroke-dasharray="14 8"/>
+
+    <!-- 220 kV (forest green) -->
+    <path d="M -20 300 C 180 320, 340 280, 560 310 S 880 350, 1180 320" stroke="#2E8B57" stroke-width="4.5"/>
+    <path d="M 80 470 C 280 450, 480 500, 700 470 S 1020 440, 1260 470" stroke="#2E8B57" stroke-width="4"/>
+
+    <!-- 132 kV (blue) -->
+    <path d="M -20 540 C 180 560, 380 520, 600 550 S 920 580, 1260 560" stroke="#3D9BE9" stroke-width="3.5"/>
+    <path d="M -20 60  C 240 80,  460 40,  680 70  S 1000 100, 1260 80" stroke="#3D9BE9" stroke-width="3.5"/>
+
+    <!-- 66 kV (yellow) -->
+    <path d="M 100 600 C 320 580, 540 620, 760 600 S 1080 580, 1260 600" stroke="#F2C744" stroke-width="3"/>
+    <path d="M -20 165 C 200 180, 380 150, 600 175 S 920 200, 1260 180" stroke="#F2C744" stroke-width="3"/>
+  </g>
+
+  <!-- node dots (substations) along the network for texture -->
+  <g fill="#ffd166" stroke="#1a1d23" stroke-width="1">
+    <circle cx="80"   cy="115" r="4"/>
+    <circle cx="240"  cy="118" r="4"/>
+    <circle cx="430"  cy="98"  r="4"/>
+    <circle cx="620"  cy="142" r="4"/>
+    <circle cx="180"  cy="218" r="4"/>
+    <circle cx="380"  cy="234" r="4"/>
+    <circle cx="560"  cy="232" r="4"/>
+    <circle cx="780"  cy="246" r="4"/>
+    <circle cx="120"  cy="395" r="4"/>
+    <circle cx="340"  cy="405" r="4"/>
+    <circle cx="560"  cy="412" r="4"/>
+    <circle cx="800"  cy="395" r="4"/>
+    <circle cx="220"  cy="316" r="4"/>
+    <circle cx="460"  cy="294" r="4"/>
+    <circle cx="700"  cy="324" r="4"/>
+    <circle cx="220"  cy="468" r="4"/>
+    <circle cx="500"  cy="488" r="4"/>
+    <circle cx="780"  cy="462" r="4"/>
+  </g>
+
+  <!-- right-side fade so the type reads cleanly -->
+  <rect x="640" width="640" height="640" fill="url(#fade)"/>
+
+  <!-- title block (right) -->
+  <g font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+
+    <!-- eyebrow -->
+    <text x="780" y="160" font-size="20" font-weight="600" letter-spacing="3" fill="#6b7280">PAKISTAN · OPEN GRID DATA</text>
+
+    <!-- title -->
+    <text x="780" y="245" font-size="80" font-weight="800" fill="#1a1d23" letter-spacing="-1">OpenGridPK</text>
+
+    <!-- tagline -->
+    <text x="780" y="295" font-size="26" font-weight="500" fill="#374151">Pakistan's transmission grid,</text>
+    <text x="780" y="328" font-size="26" font-weight="500" fill="#374151">on one map.</text>
+
+    <!-- divider -->
+    <line x1="780" y1="360" x2="900" y2="360" stroke="#1a1d23" stroke-width="2"/>
+
+    <!-- legend -->
+    <g font-size="18" fill="#1a1d23">
+      <g transform="translate(780 395)">
+        <line x1="0" y1="0" x2="34" y2="0" stroke="#F46036" stroke-width="5" stroke-linecap="round"/>
+        <text x="46" y="6" font-weight="500">500 kV</text>
+      </g>
+      <g transform="translate(780 425)">
+        <line x1="0" y1="0" x2="34" y2="0" stroke="#000000" stroke-width="5" stroke-linecap="round" stroke-dasharray="6 4"/>
+        <text x="46" y="6" font-weight="500">±660 kV HVDC</text>
+      </g>
+      <g transform="translate(780 455)">
+        <line x1="0" y1="0" x2="34" y2="0" stroke="#2E8B57" stroke-width="5" stroke-linecap="round"/>
+        <text x="46" y="6" font-weight="500">220 kV</text>
+      </g>
+      <g transform="translate(960 395)">
+        <line x1="0" y1="0" x2="34" y2="0" stroke="#3D9BE9" stroke-width="5" stroke-linecap="round"/>
+        <text x="46" y="6" font-weight="500">132 kV</text>
+      </g>
+      <g transform="translate(960 425)">
+        <line x1="0" y1="0" x2="34" y2="0" stroke="#F2C744" stroke-width="5" stroke-linecap="round"/>
+        <text x="46" y="6" font-weight="500">66 kV</text>
+      </g>
+      <g transform="translate(960 455)">
+        <circle cx="17" cy="0" r="6" fill="#ffd166" stroke="#1a1d23" stroke-width="1.2"/>
+        <text x="46" y="6" font-weight="500">Substations</text>
+      </g>
+    </g>
+
+    <!-- footer / byline -->
+    <text x="780" y="565" font-size="16" font-weight="500" fill="#1a1d23">by Saddam Hussain</text>
+    <text x="780" y="590" font-size="14" fill="#6b7280">Open data · OpenStreetMap + PyPSA-Earth · MIT / ODbL</text>
+  </g>
+</svg>

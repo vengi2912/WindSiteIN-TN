@@ -1,15 +1,20 @@
-:root {
-  --bg: #0e1116;
-  --panel: #161a22;
-  --panel-2: #1f2530;
-  --text: #e6e9ef;
-  --muted: #8a93a3;
-  --accent: #f4a261;
-  --border: #262d3a;
+/* OpenGridPK — light theme inspired by OpenInfraMap / OpenGridWorks.
+   Goal: muted basemap, bright voltage colours, atlas-like clarity.
+*/
 
-  --topbar-h: 52px;
-  --legend-w: 280px;
-  --footer-h: 28px;
+:root {
+  --bg: #f5f5f2;
+  --panel: #ffffff;
+  --panel-2: #fafaf7;
+  --text: #1a1d23;
+  --muted: #6b7280;
+  --accent: #d7263d;
+  --border: #e3e3df;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  --topbar-h: 56px;
+  --legend-w: 300px;
+  --footer-h: 30px;
 }
 
 * {
@@ -23,9 +28,12 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, sans-serif;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* --- top bar -------------------------------------------------------------- */
 
 .topbar {
   position: fixed;
@@ -36,7 +44,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 20px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   z-index: 10;
@@ -45,21 +53,40 @@ body {
 .brand {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-}
-.brand-mark {
-  font-size: 20px;
+  gap: 12px;
 }
 .brand-name {
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
+  font-size: 16px;
 }
 .brand-tag {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
 }
-@media (max-width: 720px) {
+@media (max-width: 800px) {
   .brand-tag {
+    display: none;
+  }
+}
+
+/* Author byline: absolutely centred on the topbar so it stays put as
+   left/right blocks change width. Falls back gracefully on small screens. */
+.brand-by {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+@media (max-width: 900px) {
+  .brand-by {
     display: none;
   }
 }
@@ -68,15 +95,18 @@ body {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
+  transition: background 0.15s ease;
 }
 .icon-btn:hover {
   background: var(--panel-2);
 }
+
+/* --- map ------------------------------------------------------------------ */
 
 #map {
   position: fixed;
@@ -84,12 +114,15 @@ body {
   left: 0;
   right: var(--legend-w);
   bottom: var(--footer-h);
+  background: var(--bg);
 }
-@media (max-width: 720px) {
+@media (max-width: 800px) {
   #map {
     right: 0;
   }
 }
+
+/* --- legend / sidebar ---------------------------------------------------- */
 
 .legend {
   position: fixed;
@@ -97,17 +130,18 @@ body {
   right: 0;
   bottom: var(--footer-h);
   width: var(--legend-w);
-  padding: 16px;
+  padding: 20px 18px;
   background: var(--panel);
   border-left: 1px solid var(--border);
   overflow-y: auto;
   z-index: 5;
 }
-@media (max-width: 720px) {
+@media (max-width: 800px) {
   .legend {
     transform: translateX(100%);
     transition: transform 0.2s ease;
-    width: 100%;
+    width: min(360px, 100%);
+    box-shadow: var(--shadow);
   }
   .legend.open {
     transform: translateX(0);
@@ -117,9 +151,10 @@ body {
 .legend h2 {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--muted);
-  margin: 16px 0 8px;
+  margin: 18px 0 10px;
+  font-weight: 600;
 }
 .legend h2:first-child {
   margin-top: 0;
@@ -131,53 +166,65 @@ body {
   padding: 0;
 }
 .layer-list li {
-  margin: 4px 0;
+  margin: 2px 0;
 }
 .layer-list label {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.12s ease;
 }
 .layer-list label:hover {
   background: var(--panel-2);
 }
 .layer-list input {
   accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .swatch {
   display: inline-block;
-  width: 22px;
-  height: 4px;
+  width: 28px;
+  height: 3px;
   border-radius: 2px;
   background: currentColor;
   flex-shrink: 0;
 }
 .swatch--substation {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: #ffd166;
-  border: 1px solid #c89a3d;
+  border: 1.5px solid #6b7280;
 }
 .swatch--generation {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 2px;
   background: #ef476f;
-  border: 1px solid #b73357;
+  border: 1.5px solid #6b7280;
+}
+
+.layer-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .meta-line {
-  margin-top: 24px;
+  margin-top: 28px;
   font-size: 11px;
   color: var(--muted);
   border-top: 1px solid var(--border);
-  padding-top: 12px;
+  padding-top: 14px;
+  line-height: 1.5;
 }
+
+/* --- footer attribution -------------------------------------------------- */
 
 .attrib {
   position: fixed;
@@ -187,7 +234,7 @@ body {
   height: var(--footer-h);
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 16px;
   background: var(--panel);
   border-top: 1px solid var(--border);
   font-size: 11px;
@@ -197,42 +244,64 @@ body {
 .attrib a {
   color: var(--muted);
   text-decoration: underline;
+  text-decoration-color: rgba(107, 114, 128, 0.4);
 }
 .attrib a:hover {
   color: var(--text);
+  text-decoration-color: var(--text);
 }
 
-/* MapLibre popup styling override */
+/* --- MapLibre overrides -------------------------------------------------- */
+
+.maplibregl-ctrl-attrib {
+  display: none !important; /* we render our own footer */
+}
+
 .maplibregl-popup-content {
-  background: var(--panel-2);
+  background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px 14px;
-  font: 13px/1.4 system-ui, sans-serif;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  font: 13px/1.45 system-ui, sans-serif;
+  min-width: 200px;
 }
 .maplibregl-popup-tip {
-  border-top-color: var(--panel-2) !important;
-  border-bottom-color: var(--panel-2) !important;
+  border-top-color: var(--panel) !important;
+  border-bottom-color: var(--panel) !important;
 }
+.maplibregl-popup-close-button {
+  font-size: 18px;
+  color: var(--muted);
+  padding: 4px 8px;
+}
+
 .popup-title {
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+  color: var(--text);
 }
 .popup-row {
   display: flex;
   gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 12.5px;
+  color: var(--text);
+  margin: 2px 0;
 }
 .popup-row b {
-  color: var(--text);
+  color: var(--muted);
   font-weight: 500;
+  min-width: 70px;
 }
 .popup-source {
-  margin-top: 6px;
-  padding-top: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
   font-size: 11px;
+  color: var(--muted);
+}
+.popup-source a {
   color: var(--muted);
 }
