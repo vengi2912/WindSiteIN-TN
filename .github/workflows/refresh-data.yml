@@ -63,5 +63,5 @@ jobs:
           fi
 
           git add site/data/
-          git commit -m "data: monthly refresh $(date -u +%Y-%m-%d) [skip ci]"
+          git commit -m "data: monthly refresh $(date -u +%Y-%m-%d)"
           git push
