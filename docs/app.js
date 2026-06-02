@@ -1,4 +1,4 @@
-// OpenGridIN - Consolidated JS (Bug-Free Basemap Switcher + Filter + City Search)
+// OpenGridIN - Bug-Free JS (Instant Basemap Toggle + Filter + Search)
 const VOLTAGE_CLASSES_URL = "data/voltage_classes.json";
 const META_URL = "data/meta.json";
 const IN_BBOX = [68.1, 6.7, 97.4, 35.5]; 
@@ -6,7 +6,8 @@ const IN_BBOX = [68.1, 6.7, 97.4, 35.5];
 const SUBSTATION_COLOR = "#ffd166";
 const GENERATION_COLOR = "#ef476f";
 
-const POSITRON_STYLE = {
+// PRO FIX: Both basemaps are loaded together. We just hide/show them.
+const BASE_STYLE = {
   version: 8,
   sources: {
     positron: {
@@ -14,27 +15,20 @@ const POSITRON_STYLE = {
       tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
       tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap contributors © CARTO",
     },
-  },
-  layers: [{ id: "base-raster", type: "raster", source: "positron" }],
-};
-
-const SATELLITE_STYLE = {
-  version: 8,
-  sources: {
     google_satellite: {
       type: "raster",
       tiles: ["https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"],
       tileSize: 256, maxzoom: 20, attribution: "© Google Earth / Satellite",
-    },
+    }
   },
-  layers: [{ id: "base-raster", type: "raster", source: "google_satellite" }],
+  layers: [
+    { id: "base-positron", type: "raster", source: "positron", layout: { visibility: "visible" } },
+    { id: "base-satellite", type: "raster", source: "google_satellite", layout: { visibility: "none" } }
+  ],
 };
 
-// Global State
 window.appState = {
-  voltageClasses: [],
-  activeFilter: null,
-  eventsAttached: false // Prevents duplicate popups on basemap switch
+  voltageClasses: []
 };
 
 async function main() {
@@ -49,7 +43,7 @@ async function main() {
 
   const map = new maplibregl.Map({
     container: "map",
-    style: POSITRON_STYLE,
+    style: BASE_STYLE,
     bounds: IN_BBOX,
     fitBoundsOptions: { padding: 30 },
   });
@@ -65,53 +59,27 @@ async function main() {
   });
 }
 
-// 1. Initialize Map Layers and Restore States
+// 1. Initialize Map Layers (Called ONLY ONCE now)
 function initMapLayers(map) {
   const drawOrder = [...window.appState.voltageClasses].reverse();
-  
-  // Draw Sources and Layers
   for (const vc of drawOrder) addVoltageLayer(map, vc);
   addSubstationsLayer(map);
   addGenerationLayer(map);
-
-  // Attach click/hover events and UI toggles ONLY ONCE to avoid duplication
-  if (!window.appState.eventsAttached) {
-    attachMapEvents(map, window.appState.voltageClasses);
-    wireLegendTogglesOnce(map, window.appState.voltageClasses);
-    window.appState.eventsAttached = true;
-  }
-
-  // Restore Checkbox Visibility States
-  for (const vc of drawOrder) {
-    const cb = document.querySelector(`input[data-voltage="${vc.id}"]`);
-    if (cb && !cb.checked && map.getLayer(`lines-${vc.id}-layer`)) {
-      map.setLayoutProperty(`lines-${vc.id}-layer`, "visibility", "none");
-    }
-  }
-  const subCb = document.querySelector(`input[data-layer="substations"]`);
-  if (subCb && !subCb.checked && map.getLayer("substations-layer")) map.setLayoutProperty("substations-layer", "visibility", "none");
-  
-  const genCb = document.querySelector(`input[data-layer="generation"]`);
-  if (genCb && !genCb.checked && map.getLayer("generation-layer")) map.setLayoutProperty("generation-layer", "visibility", "none");
-
-  // Re-apply Filters if any
-  if (window.appState.activeFilter) {
-     applyFilterToAll(map, window.appState.activeFilter);
-  }
+  wireLegendToggles(map, window.appState.voltageClasses);
 }
 
-// 2. Basemap Switcher Logic (FIXED: Waits for style to load, then redraws)
+// 2. Basemap Switcher Logic (Instant Toggle, No Layer Wiping)
 function setupUIBasemapSwitcher(map) {
   const radios = document.querySelectorAll('input[name="basemap"]');
   radios.forEach((radio) => {
     radio.addEventListener('change', (e) => {
-      const selectedStyle = e.target.value === 'satellite' ? SATELLITE_STYLE : POSITRON_STYLE;
-      map.setStyle(selectedStyle);
-      
-      // CRITICAL FIX: Once the new background loads, redraw our custom layers!
-      map.once('style.load', () => {
-        initMapLayers(map);
-      });
+      if (e.target.value === 'satellite') {
+        map.setLayoutProperty('base-positron', 'visibility', 'none');
+        map.setLayoutProperty('base-satellite', 'visibility', 'visible');
+      } else {
+        map.setLayoutProperty('base-positron', 'visibility', 'visible');
+        map.setLayoutProperty('base-satellite', 'visibility', 'none');
+      }
     });
   });
 }
@@ -128,13 +96,12 @@ function setupAttributeFilter(map) {
     const val = valueInput.value.trim();
     if (!val) { alert("Please enter a value to filter!"); return; }
     
-    window.appState.activeFilter = ['==', ['get', field], val];
-    applyFilterToAll(map, window.appState.activeFilter);
+    const filterExpr = ['==', ['get', field], val];
+    applyFilterToAll(map, filterExpr);
   });
 
   clearBtn.addEventListener('click', () => {
     valueInput.value = '';
-    window.appState.activeFilter = null;
     applyFilterToAll(map, null);
   });
 }
@@ -144,9 +111,7 @@ function applyFilterToAll(map, filterExpr) {
     .concat(['substations-layer', 'generation-layer']);
    
    allLayers.forEach(layerId => {
-      if (map.getLayer(layerId)) {
-        map.setFilter(layerId, filterExpr);
-      }
+      if (map.getLayer(layerId)) map.setFilter(layerId, filterExpr);
    });
 }
 
@@ -184,14 +149,12 @@ function setupCitySearch(map) {
   searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBtn.click(); });
 }
 
-// ---- Layer Generators ----
+// ---- Layer Generators & Popups ----
 function addVoltageLayer(map, vc) {
   const sourceId = `lines-${vc.id}`;
   const layerId = `lines-${vc.id}-layer`;
 
-  if (!map.getSource(sourceId)) {
-    map.addSource(sourceId, { type: "geojson", data: `data/${vc.geojson_filename}`, promoteId: "osm_id" });
-  }
+  map.addSource(sourceId, { type: "geojson", data: `data/${vc.geojson_filename}`, promoteId: "osm_id" });
 
   const widthScale = vc.id === "unknown" ? 0.6 : voltageWidthScale(vc.voltage_v);
   const paint = {
@@ -201,12 +164,14 @@ function addVoltageLayer(map, vc) {
   };
   if (vc.line_dash) paint["line-dasharray"] = vc.line_dash;
 
-  if (!map.getLayer(layerId)) {
-    map.addLayer({
-      id: layerId, type: "line", source: sourceId, minzoom: vc.min_zoom_visible,
-      layout: { "line-cap": "round", "line-join": "round", visibility: "visible" }, paint,
-    });
-  }
+  map.addLayer({
+    id: layerId, type: "line", source: sourceId, minzoom: vc.min_zoom_visible,
+    layout: { "line-cap": "round", "line-join": "round", visibility: "visible" }, paint,
+  });
+
+  map.on("click", layerId, (e) => showLinePopup(map, vc, e));
+  map.on("mouseenter", layerId, () => (map.getCanvas().style.cursor = "pointer"));
+  map.on("mouseleave", layerId, () => (map.getCanvas().style.cursor = ""));
 }
 
 function voltageWidthScale(v) {
@@ -218,59 +183,51 @@ function voltageWidthScale(v) {
 }
 
 function addSubstationsLayer(map) {
-  if (!map.getSource("substations")) {
-    map.addSource("substations", { type: "geojson", data: "data/substations.geojson" });
-  }
-  if (!map.getLayer("substations-layer")) {
-    map.addLayer({
-      id: "substations-layer", type: "circle", source: "substations", minzoom: 7,
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 2.2, 12, 6, 16, 9],
-        "circle-color": SUBSTATION_COLOR, "circle-stroke-color": "#1a1d23",
-        "circle-stroke-width": 0.8, "circle-opacity": 0.95,
-      },
-    });
-  }
-}
-
-function addGenerationLayer(map) {
-  if (!map.getSource("generation")) {
-    map.addSource("generation", { type: "geojson", data: "data/generation.geojson" });
-  }
-  if (!map.getLayer("generation-layer")) {
-    map.addLayer({
-      id: "generation-layer", type: "circle", source: "generation", minzoom: 5,
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 3, 12, 7.5, 16, 11],
-        "circle-color": GENERATION_COLOR, "circle-stroke-color": "#1a1d23",
-        "circle-stroke-width": 0.8, "circle-opacity": 0.95,
-      },
-    });
-  }
-}
-
-// ---- Event Listeners Attachment ----
-function attachMapEvents(map, voltageClasses) {
-  // Substations
+  map.addSource("substations", { type: "geojson", data: "data/substations.geojson" });
+  map.addLayer({
+    id: "substations-layer", type: "circle", source: "substations", minzoom: 7,
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 2.2, 12, 6, 16, 9],
+      "circle-color": SUBSTATION_COLOR, "circle-stroke-color": "#1a1d23",
+      "circle-stroke-width": 0.8, "circle-opacity": 0.95,
+    },
+  });
   map.on("click", "substations-layer", (e) => showPointPopup(map, e, "Substation"));
   map.on("mouseenter", "substations-layer", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "substations-layer", () => (map.getCanvas().style.cursor = ""));
+}
 
-  // Generation
+function addGenerationLayer(map) {
+  map.addSource("generation", { type: "geojson", data: "data/generation.geojson" });
+  map.addLayer({
+    id: "generation-layer", type: "circle", source: "generation", minzoom: 5,
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 3, 12, 7.5, 16, 11],
+      "circle-color": GENERATION_COLOR, "circle-stroke-color": "#1a1d23",
+      "circle-stroke-width": 0.8, "circle-opacity": 0.95,
+    },
+  });
   map.on("click", "generation-layer", (e) => showPointPopup(map, e, "Generation plant"));
   map.on("mouseenter", "generation-layer", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "generation-layer", () => (map.getCanvas().style.cursor = ""));
-
-  // Voltages
-  for (const vc of voltageClasses) {
-    const layerId = `lines-${vc.id}-layer`;
-    map.on("click", layerId, (e) => showLinePopup(map, vc, e));
-    map.on("mouseenter", layerId, () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", layerId, () => (map.getCanvas().style.cursor = ""));
-  }
 }
 
-function wireLegendTogglesOnce(map, voltageClasses) {
+function renderLegend(voltageClasses, meta) {
+  const list = document.getElementById("voltage-list");
+  const counts = (meta && meta.line_counts) || {};
+  list.innerHTML = voltageClasses.map((vc) => {
+    const n = counts[vc.id];
+    const countLabel = n != null ? `<span class="layer-count">${n.toLocaleString()}</span>` : "";
+    return `<li><label><input type="checkbox" data-voltage="${vc.id}" checked />
+            <span class="swatch" style="color: ${vc.color}"></span>${vc.label}${countLabel}</label></li>`;
+  }).join("");
+
+  document.getElementById("legend-toggle").addEventListener("click", () => {
+    document.getElementById("legend").classList.toggle("open");
+  });
+}
+
+function wireLegendToggles(map, voltageClasses) {
   for (const vc of voltageClasses) {
     const cb = document.querySelector(`input[data-voltage="${vc.id}"]`);
     if (cb) {
@@ -293,22 +250,6 @@ function wireLegendTogglesOnce(map, voltageClasses) {
   }
 }
 
-// ---- UI Renderers & Popups ----
-function renderLegend(voltageClasses, meta) {
-  const list = document.getElementById("voltage-list");
-  const counts = (meta && meta.line_counts) || {};
-  list.innerHTML = voltageClasses.map((vc) => {
-    const n = counts[vc.id];
-    const countLabel = n != null ? `<span class="layer-count">${n.toLocaleString()}</span>` : "";
-    return `<li><label><input type="checkbox" data-voltage="${vc.id}" checked />
-            <span class="swatch" style="color: ${vc.color}"></span>${vc.label}${countLabel}</label></li>`;
-  }).join("");
-
-  document.getElementById("legend-toggle").addEventListener("click", () => {
-    document.getElementById("legend").classList.toggle("open");
-  });
-}
-
 function renderMeta(meta) {
   const el = document.getElementById("meta-line");
   if (!meta || !meta.built_at) { el.textContent = "Data not yet built."; return; }
@@ -323,4 +264,18 @@ function showLinePopup(map, vc, e) {
   new maplibregl.Popup({ closeButton: true, maxWidth: "320px" }).setLngLat(e.lngLat)
     .setHTML(`<div class="popup-title">${escapeHtml(props.name || vc.label + " line")}</div>
               <div class="popup-row"><b>Voltage</b><span>${voltLabel}</span></div>
-              <div class="popup-row"><b>Operator</b><span>${escapeHtml(props.operator || 'Unknown')}
+              <div class="popup-row"><b>Operator</b><span>${escapeHtml(props.operator || 'Unknown')}</span></div>`)
+    .addTo(map);
+}
+
+function showPointPopup(map, e, fallbackTitle) {
+  const props = e.features[0].properties || {};
+  new maplibregl.Popup({ closeButton: true, maxWidth: "320px" }).setLngLat(e.lngLat)
+    .setHTML(`<div class="popup-title">${escapeHtml(props.name || fallbackTitle)}</div>
+              <div class="popup-row"><b>Operator</b><span>${escapeHtml(props.operator || 'Unknown')}</span></div>`)
+    .addTo(map);
+}
+
+function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+main().catch((err) => console.error(err));
