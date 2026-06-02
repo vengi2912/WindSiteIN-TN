@@ -25,6 +25,33 @@
     </header>
 
     <main id="map" aria-label="India transmission grid map"></main>
+    <main id="map" aria-label="India transmission grid map"></main>
+
+    <div id="ui-container">
+      
+      <div class="map-ui-box">
+        <div class="ui-title">Basemap</div>
+        <label><input type="radio" name="basemap" value="positron" checked> Light Map</label>
+        <label><input type="radio" name="basemap" value="satellite"> Google Satellite</label>
+      </div>
+
+      <div class="map-ui-box">
+        <div class="ui-title">Filter Features</div>
+        <select id="filter-field" class="ui-input">
+          <option value="operator">Operator (Company)</option>
+          <option value="name">Line / Plant Name</option>
+          <option value="voltage">Voltage</option>
+        </select>
+        <input type="text" id="filter-value" class="ui-input" placeholder="Type exact value..." />
+        <div class="ui-buttons">
+          <button id="apply-filter" class="btn-primary">Apply</button>
+          <button id="clear-filter" class="btn-secondary">Clear</button>
+        </div>
+      </div>
+
+    </div>
+    <aside id="legend" class="legend" aria-label="Legend and layer controls">
+      <h2>Voltage</h2>
 
     <aside id="legend" class="legend" aria-label="Legend and layer controls">
       <h2>Voltage</h2>
