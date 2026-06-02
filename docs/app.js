@@ -1,4 +1,4 @@
-// OpenGridIN - Bug-Free JS (Instant Basemap Toggle + Filter + Search)
+// OpenGridIN - Clean Code (Filter Removed, City Search + Basemap Maintained)
 const VOLTAGE_CLASSES_URL = "data/voltage_classes.json";
 const META_URL = "data/meta.json";
 const IN_BBOX = [68.1, 6.7, 97.4, 35.5]; 
@@ -6,7 +6,6 @@ const IN_BBOX = [68.1, 6.7, 97.4, 35.5];
 const SUBSTATION_COLOR = "#ffd166";
 const GENERATION_COLOR = "#ef476f";
 
-// PRO FIX: Both basemaps are loaded together. We just hide/show them.
 const BASE_STYLE = {
   version: 8,
   sources: {
@@ -27,19 +26,21 @@ const BASE_STYLE = {
   ],
 };
 
-window.appState = {
-  voltageClasses: []
-};
+window.appState = { voltageClasses: [] };
 
 async function main() {
-  const [voltageRegistry, meta] = await Promise.all([
-    fetch(VOLTAGE_CLASSES_URL).then((r) => r.json()),
-    fetch(META_URL).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-  ]);
+  try {
+    const [voltageRegistry, meta] = await Promise.all([
+      fetch(VOLTAGE_CLASSES_URL).then((r) => r.ok ? r.json() : { classes: [] }),
+      fetch(META_URL).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
 
-  window.appState.voltageClasses = voltageRegistry.classes;
-  renderLegend(window.appState.voltageClasses, meta);
-  renderMeta(meta);
+    window.appState.voltageClasses = voltageRegistry.classes || [];
+    renderLegend(window.appState.voltageClasses, meta);
+    renderMeta(meta);
+  } catch (error) {
+    console.error("Failed to load map data:", error);
+  }
 
   const map = new maplibregl.Map({
     container: "map",
@@ -54,12 +55,10 @@ async function main() {
   map.on("load", () => {
     initMapLayers(map);
     setupUIBasemapSwitcher(map);
-    setupAttributeFilter(map);
     setupCitySearch(map);
   });
 }
 
-// 1. Initialize Map Layers (Called ONLY ONCE now)
 function initMapLayers(map) {
   const drawOrder = [...window.appState.voltageClasses].reverse();
   for (const vc of drawOrder) addVoltageLayer(map, vc);
@@ -68,7 +67,6 @@ function initMapLayers(map) {
   wireLegendToggles(map, window.appState.voltageClasses);
 }
 
-// 2. Basemap Switcher Logic (Instant Toggle, No Layer Wiping)
 function setupUIBasemapSwitcher(map) {
   const radios = document.querySelectorAll('input[name="basemap"]');
   radios.forEach((radio) => {
@@ -84,41 +82,11 @@ function setupUIBasemapSwitcher(map) {
   });
 }
 
-// 3. Attribute Filter Logic
-function setupAttributeFilter(map) {
-  const applyBtn = document.getElementById('apply-filter');
-  const clearBtn = document.getElementById('clear-filter');
-  const fieldSelect = document.getElementById('filter-field');
-  const valueInput = document.getElementById('filter-value');
-
-  applyBtn.addEventListener('click', () => {
-    const field = fieldSelect.value;
-    const val = valueInput.value.trim();
-    if (!val) { alert("Please enter a value to filter!"); return; }
-    
-    const filterExpr = ['==', ['get', field], val];
-    applyFilterToAll(map, filterExpr);
-  });
-
-  clearBtn.addEventListener('click', () => {
-    valueInput.value = '';
-    applyFilterToAll(map, null);
-  });
-}
-
-function applyFilterToAll(map, filterExpr) {
-   const allLayers = window.appState.voltageClasses.map(vc => `lines-${vc.id}-layer`)
-    .concat(['substations-layer', 'generation-layer']);
-   
-   allLayers.forEach(layerId => {
-      if (map.getLayer(layerId)) map.setFilter(layerId, filterExpr);
-   });
-}
-
-// 4. City Search Logic
 function setupCitySearch(map) {
   const searchInput = document.getElementById('search-city-input');
   const searchBtn = document.getElementById('search-city-btn');
+
+  if (!searchBtn) return;
 
   searchBtn.addEventListener('click', async () => {
     const query = searchInput.value.trim();
@@ -135,11 +103,10 @@ function setupCitySearch(map) {
         const result = data[0];
         map.flyTo({ center: [parseFloat(result.lon), parseFloat(result.lat)], zoom: 11, essential: true });
       } else {
-        alert("City not found in India! Please try another name.");
+        alert("City not found in India!");
       }
     } catch (error) {
       console.error("Geocoding error:", error);
-      alert("Search error. Please try again.");
     } finally {
       searchBtn.innerText = "Search City";
       searchBtn.disabled = false;
@@ -149,7 +116,6 @@ function setupCitySearch(map) {
   searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBtn.click(); });
 }
 
-// ---- Layer Generators & Popups ----
 function addVoltageLayer(map, vc) {
   const sourceId = `lines-${vc.id}`;
   const layerId = `lines-${vc.id}-layer`;
@@ -214,6 +180,7 @@ function addGenerationLayer(map) {
 
 function renderLegend(voltageClasses, meta) {
   const list = document.getElementById("voltage-list");
+  if (!list) return;
   const counts = (meta && meta.line_counts) || {};
   list.innerHTML = voltageClasses.map((vc) => {
     const n = counts[vc.id];
@@ -252,6 +219,7 @@ function wireLegendToggles(map, voltageClasses) {
 
 function renderMeta(meta) {
   const el = document.getElementById("meta-line");
+  if (!el) return;
   if (!meta || !meta.built_at) { el.textContent = "Data not yet built."; return; }
   const builtAt = new Date(meta.built_at).toISOString().slice(0, 10);
   const totalKm = Object.values(meta.line_lengths_km || {}).reduce((s, v) => s + v, 0);
