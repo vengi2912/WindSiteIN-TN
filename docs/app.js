@@ -1,71 +1,180 @@
-// OpenGridPK - static site bootstrap.
-// Reads canonical voltage classes from data/voltage_classes.json (copied
-// there by the pipeline; same file the Python build code reads), wires up
-// MapLibre layers, the legend toggles, and click popups.
-
+// OpenGridIN - Consolidated JS (Basemap + Filter + City Search Logic)
 const VOLTAGE_CLASSES_URL = "data/voltage_classes.json";
 const META_URL = "data/meta.json";
-const IN_BBOX = [68.1, 6.7, 97.4, 35.5]; // India bbox [west, south, east, north]
+const IN_BBOX = [68.1, 6.7, 97.4, 35.5]; 
 
 const SUBSTATION_COLOR = "#ffd166";
 const GENERATION_COLOR = "#ef476f";
 
-// CartoDB Positron - clean light basemap that lets voltage colors pop.
-// Free, no API key. Three-subdomain rotation for parallel tile loads.
-const BASE_STYLE = {
+const POSITRON_STYLE = {
   version: 8,
   sources: {
     positron: {
       type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-      ],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution:
-        "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors © <a href='https://carto.com/attributions'>CARTO</a>",
+      tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
+      tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap contributors © CARTO",
     },
   },
-  layers: [{ id: "positron", type: "raster", source: "positron" }],
+  layers: [{ id: "base-raster", type: "raster", source: "positron" }],
 };
 
-// ---------------------------------------------------------------------------
+const SATELLITE_STYLE = {
+  version: 8,
+  sources: {
+    google_satellite: {
+      type: "raster",
+      tiles: ["https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"],
+      tileSize: 256, maxzoom: 20, attribution: "© Google Earth / Satellite",
+    },
+  },
+  layers: [{ id: "base-raster", type: "raster", source: "google_satellite" }],
+};
+
+// Global State to preserve active filter when switching basemap
+window.appState = {
+  voltageClasses: [],
+  activeFilter: null
+};
 
 async function main() {
   const [voltageRegistry, meta] = await Promise.all([
     fetch(VOLTAGE_CLASSES_URL).then((r) => r.json()),
-    fetch(META_URL)
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null),
+    fetch(META_URL).then((r) => (r.ok ? r.json() : null)).catch(() => null),
   ]);
 
-  const voltageClasses = voltageRegistry.classes;
-  renderLegend(voltageClasses, meta);
+  window.appState.voltageClasses = voltageRegistry.classes;
+  renderLegend(window.appState.voltageClasses, meta);
   renderMeta(meta);
 
   const map = new maplibregl.Map({
     container: "map",
-    style: BASE_STYLE,
+    style: POSITRON_STYLE,
     bounds: IN_BBOX,
     fitBoundsOptions: { padding: 30 },
   });
+
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-left");
 
   map.on("load", () => {
-    // Add layers from lowest voltage to highest so higher voltages render on top.
-    const drawOrder = [...voltageClasses].reverse();
-    for (const vc of drawOrder) addVoltageLayer(map, vc);
-    addSubstationsLayer(map);
-    addGenerationLayer(map);
-    wireLegendToggles(map, voltageClasses);
+    initMapLayers(map);
+    setupUIBasemapSwitcher(map);
+    setupAttributeFilter(map);
+    setupCitySearch(map); // Initialize City Search
   });
 }
 
-// ---- layer setup ----------------------------------------------------------
+function initMapLayers(map) {
+  const drawOrder = [...window.appState.voltageClasses].reverse();
+  for (const vc of drawOrder) addVoltageLayer(map, vc);
+  addSubstationsLayer(map);
+  addGenerationLayer(map);
+  wireLegendToggles(map, window.appState.voltageClasses);
+  
+  // Re-apply filter if user just switched the basemap
+  if (window.appState.activeFilter) {
+     applyFilterToAll(map, window.appState.activeFilter);
+  }
+}
 
+// 1. Basemap Switcher Logic
+function setupUIBasemapSwitcher(map) {
+  const radios = document.querySelectorAll('input[name="basemap"]');
+  radios.forEach((radio) => {
+    radio.addEventListener('change', (e) => {
+      const selectedStyle = e.target.value === 'satellite' ? SATELLITE_STYLE : POSITRON_STYLE;
+      map.setStyle(selectedStyle);
+      
+      map.once('style.load', () => {
+        initMapLayers(map);
+      });
+    });
+  });
+}
+
+// 2. Attribute Filter Logic
+function setupAttributeFilter(map) {
+  const applyBtn = document.getElementById('apply-filter');
+  const clearBtn = document.getElementById('clear-filter');
+  const fieldSelect = document.getElementById('filter-field');
+  const valueInput = document.getElementById('filter-value');
+
+  applyBtn.addEventListener('click', () => {
+    const field = fieldSelect.value;
+    const val = valueInput.value.trim();
+    if (!val) { alert("Please enter a value to filter!"); return; }
+    
+    window.appState.activeFilter = ['==', ['get', field], val];
+    applyFilterToAll(map, window.appState.activeFilter);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    valueInput.value = '';
+    window.appState.activeFilter = null;
+    applyFilterToAll(map, null);
+  });
+}
+
+function applyFilterToAll(map, filterExpr) {
+   const allLayers = window.appState.voltageClasses.map(vc => `lines-${vc.id}-layer`)
+    .concat(['substations-layer', 'generation-layer']);
+   
+   allLayers.forEach(layerId => {
+      if (map.getLayer(layerId)) {
+        map.setFilter(layerId, filterExpr);
+      }
+   });
+}
+
+// 3. City Search Logic (OSM Nominatim API bound to India)
+function setupCitySearch(map) {
+  const searchInput = document.getElementById('search-city-input');
+  const searchBtn = document.getElementById('search-city-btn');
+
+  searchBtn.addEventListener('click', async () => {
+    const query = searchInput.value.trim();
+    if (!query) { alert("Please enter a city name!"); return; }
+
+    try {
+      searchBtn.innerText = "Searching...";
+      searchBtn.disabled = true;
+
+      // Fetch from Nominatim API restricted to India (countrycodes=in)
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=1`);
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const result = data[0];
+        const lat = parseFloat(result.lat);
+        const lon = parseFloat(result.lon);
+        
+        // Smoothly fly to the searched city location
+        map.flyTo({
+          center: [lon, lat],
+          zoom: 11,
+          essential: true
+        });
+      } else {
+        alert("City not found in India! Please try another name.");
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      alert("Search error. Please try again.");
+    } finally {
+      searchBtn.innerText = "Search City";
+      searchBtn.disabled = false;
+    }
+  });
+
+  // Enable search on pressing Enter key
+  searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      searchBtn.click();
+    }
+  });
+}
+
+// ---- Layer Setup Functions ----
 function addVoltageLayer(map, vc) {
   const sourceId = `lines-${vc.id}`;
   const layerId = `lines-${vc.id}-layer`;
@@ -76,33 +185,17 @@ function addVoltageLayer(map, vc) {
     promoteId: "osm_id",
   });
 
-  // Higher voltages slightly thicker so the eye finds the backbone first.
   const widthScale = vc.id === "unknown" ? 0.6 : voltageWidthScale(vc.voltage_v);
-
   const paint = {
     "line-color": vc.color,
-    "line-width": [
-      "interpolate", ["linear"], ["zoom"],
-      4, 0.5 * widthScale,
-      8, 1.4 * widthScale,
-      12, 3.0 * widthScale,
-      16, 5.0 * widthScale,
-    ],
+    "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.5 * widthScale, 8, 1.4 * widthScale, 12, 3.0 * widthScale, 16, 5.0 * widthScale],
     "line-opacity": vc.id === "unknown" ? 0.55 : 0.95,
   };
   if (vc.line_dash) paint["line-dasharray"] = vc.line_dash;
 
   map.addLayer({
-    id: layerId,
-    type: "line",
-    source: sourceId,
-    minzoom: vc.min_zoom_visible,
-    layout: {
-      "line-cap": "round",
-      "line-join": "round",
-      visibility: vc.default_visible ? "visible" : "none",
-    },
-    paint,
+    id: layerId, type: "line", source: sourceId, minzoom: vc.min_zoom_visible,
+    layout: { "line-cap": "round", "line-join": "round", visibility: "visible" }, paint,
   });
 
   map.on("click", layerId, (e) => showLinePopup(map, vc, e));
@@ -121,16 +214,11 @@ function voltageWidthScale(v) {
 function addSubstationsLayer(map) {
   map.addSource("substations", { type: "geojson", data: "data/substations.geojson" });
   map.addLayer({
-    id: "substations-layer",
-    type: "circle",
-    source: "substations",
-    minzoom: 7,
+    id: "substations-layer", type: "circle", source: "substations", minzoom: 7,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 2.2, 12, 6, 16, 9],
-      "circle-color": SUBSTATION_COLOR,
-      "circle-stroke-color": "#1a1d23",
-      "circle-stroke-width": 0.8,
-      "circle-opacity": 0.95,
+      "circle-color": SUBSTATION_COLOR, "circle-stroke-color": "#1a1d23",
+      "circle-stroke-width": 0.8, "circle-opacity": 0.95,
     },
   });
   map.on("click", "substations-layer", (e) => showPointPopup(map, e, "Substation"));
@@ -141,16 +229,11 @@ function addSubstationsLayer(map) {
 function addGenerationLayer(map) {
   map.addSource("generation", { type: "geojson", data: "data/generation.geojson" });
   map.addLayer({
-    id: "generation-layer",
-    type: "circle",
-    source: "generation",
-    minzoom: 5,
+    id: "generation-layer", type: "circle", source: "generation", minzoom: 5,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 3, 12, 7.5, 16, 11],
-      "circle-color": GENERATION_COLOR,
-      "circle-stroke-color": "#1a1d23",
-      "circle-stroke-width": 0.8,
-      "circle-opacity": 0.95,
+      "circle-color": GENERATION_COLOR, "circle-stroke-color": "#1a1d23",
+      "circle-stroke-width": 0.8, "circle-opacity": 0.95,
     },
   });
   map.on("click", "generation-layer", (e) => showPointPopup(map, e, "Generation plant"));
@@ -158,31 +241,18 @@ function addGenerationLayer(map) {
   map.on("mouseleave", "generation-layer", () => (map.getCanvas().style.cursor = ""));
 }
 
-// ---- legend / toggles -----------------------------------------------------
-
 function renderLegend(voltageClasses, meta) {
   const list = document.getElementById("voltage-list");
   const counts = (meta && meta.line_counts) || {};
-  list.innerHTML = voltageClasses
-    .map((vc) => {
-      const n = counts[vc.id];
-      const countLabel = n != null ? `<span class="layer-count">${n.toLocaleString()}</span>` : "";
-      const checked = vc.default_visible ? "checked" : "";
-      return `
-        <li>
-          <label>
-            <input type="checkbox" data-voltage="${vc.id}" ${checked} />
-            <span class="swatch" style="color: ${vc.color}"></span>
-            ${vc.label}
-            ${countLabel}
-          </label>
-        </li>`;
-    })
-    .join("");
+  list.innerHTML = voltageClasses.map((vc) => {
+    const n = counts[vc.id];
+    const countLabel = n != null ? `<span class="layer-count">${n.toLocaleString()}</span>` : "";
+    return `<li><label><input type="checkbox" data-voltage="${vc.id}" checked />
+            <span class="swatch" style="color: ${vc.color}"></span>${vc.label}${countLabel}</label></li>`;
+  }).join("");
 
-  const legend = document.getElementById("legend");
   document.getElementById("legend-toggle").addEventListener("click", () => {
-    legend.classList.toggle("open");
+    document.getElementById("legend").classList.toggle("open");
   });
 }
 
@@ -194,87 +264,34 @@ function wireLegendToggles(map, voltageClasses) {
       map.setLayoutProperty(`lines-${vc.id}-layer`, "visibility", cb.checked ? "visible" : "none");
     });
   }
-  for (const layer of ["substations", "generation"]) {
-    const cb = document.querySelector(`input[data-layer="${layer}"]`);
-    cb.addEventListener("change", () => {
-      map.setLayoutProperty(`${layer}-layer`, "visibility", cb.checked ? "visible" : "none");
-    });
-  }
 }
 
 function renderMeta(meta) {
   const el = document.getElementById("meta-line");
-  if (!meta || !meta.built_at) {
-    el.textContent = "Data not yet built. Run `make refresh`.";
-    return;
-  }
+  if (!meta || !meta.built_at) { el.textContent = "Data not yet built."; return; }
   const builtAt = new Date(meta.built_at).toISOString().slice(0, 10);
   const totalKm = Object.values(meta.line_lengths_km || {}).reduce((s, v) => s + v, 0);
-  el.innerHTML = `
-    Last refreshed: ${builtAt}<br />
-    ${Math.round(totalKm).toLocaleString()} km of line · ${meta.substation_count.toLocaleString()} substations · ${meta.generation_count.toLocaleString()} plants
-  `;
+  el.innerHTML = `Last refreshed: ${builtAt} | ${Math.round(totalKm).toLocaleString()} km lines`;
 }
-
-// ---- popups ---------------------------------------------------------------
 
 function showLinePopup(map, vc, e) {
   const props = e.features[0].properties || {};
-  const voltLabel =
-    vc.id === "unknown"
-      ? "<i>not tagged in OSM</i>"
-      : (props.voltage_raw ? `${vc.label} <span style="color:var(--muted)">(${escapeHtml(props.voltage_raw)})</span>` : vc.label);
-  const html = `
-    <div class="popup-title">${escapeHtml(props.name || vc.label + " line")}</div>
-    <div class="popup-row"><b>Voltage</b><span>${voltLabel}</span></div>
-    ${props.operator ? `<div class="popup-row"><b>Operator</b><span>${escapeHtml(props.operator)}</span></div>` : ""}
-    ${props.power_kind ? `<div class="popup-row"><b>OSM tag</b><span>power=${escapeHtml(props.power_kind)}</span></div>` : ""}
-    <div class="popup-source">
-      Source: ${escapeHtml(props.source || "osm")}${
-        props.osm_id
-          ? ` · <a href="https://www.openstreetmap.org/way/${props.osm_id}" target="_blank" rel="noopener">OSM way ${props.osm_id}</a>`
-          : ""
-      }
-    </div>
-  `;
-  new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
-    .setLngLat(e.lngLat)
-    .setHTML(html)
+  const voltLabel = props.voltage_raw ? `${vc.label} <span style="color:var(--muted)">(${escapeHtml(props.voltage_raw)})</span>` : vc.label;
+  new maplibregl.Popup({ closeButton: true, maxWidth: "320px" }).setLngLat(e.lngLat)
+    .setHTML(`<div class="popup-title">${escapeHtml(props.name || vc.label + " line")}</div>
+              <div class="popup-row"><b>Voltage</b><span>${voltLabel}</span></div>
+              <div class="popup-row"><b>Operator</b><span>${escapeHtml(props.operator || 'Unknown')}</span></div>`)
     .addTo(map);
 }
 
 function showPointPopup(map, e, fallbackTitle) {
   const props = e.features[0].properties || {};
-  const html = `
-    <div class="popup-title">${escapeHtml(props.name || fallbackTitle)}</div>
-    ${props.voltage ? `<div class="popup-row"><b>Voltage</b><span>${escapeHtml(props.voltage)} V</span></div>` : ""}
-    ${props.operator ? `<div class="popup-row"><b>Operator</b><span>${escapeHtml(props.operator)}</span></div>` : ""}
-    ${props.plant_source ? `<div class="popup-row"><b>Source</b><span>${escapeHtml(props.plant_source)}</span></div>` : ""}
-    ${props.plant_output ? `<div class="popup-row"><b>Output</b><span>${escapeHtml(props.plant_output)}</span></div>` : ""}
-    <div class="popup-source">
-      Source: ${escapeHtml(props.source || "osm")}${
-        props.osm_id
-          ? ` · <a href="https://www.openstreetmap.org/${escapeHtml(props.osm_type || "node")}/${props.osm_id}" target="_blank" rel="noopener">OSM ${escapeHtml(props.osm_type)} ${props.osm_id}</a>`
-          : ""
-      }
-    </div>
-  `;
-  new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
-    .setLngLat(e.lngLat)
-    .setHTML(html)
+  new maplibregl.Popup({ closeButton: true, maxWidth: "320px" }).setLngLat(e.lngLat)
+    .setHTML(`<div class="popup-title">${escapeHtml(props.name || fallbackTitle)}</div>
+              <div class="popup-row"><b>Operator</b><span>${escapeHtml(props.operator || 'Unknown')}</span></div>`)
     .addTo(map);
 }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
-main().catch((err) => {
-  console.error(err);
-  document.getElementById("meta-line").textContent = "Failed to load. See console.";
-});
+main().catch((err) => console.error(err));
