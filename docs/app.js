@@ -1,4 +1,4 @@
-// OpenGridIN - Consolidated JS (Basemap + Filter + City Search Logic)
+// OpenGridIN - Consolidated JS (Basemap Auto-Recovery + Filter + City Search)
 const VOLTAGE_CLASSES_URL = "data/voltage_classes.json";
 const META_URL = "data/meta.json";
 const IN_BBOX = [68.1, 6.7, 97.4, 35.5]; 
@@ -30,7 +30,7 @@ const SATELLITE_STYLE = {
   layers: [{ id: "base-raster", type: "raster", source: "google_satellite" }],
 };
 
-// Global State to preserve active filter when switching basemap
+// Global State
 window.appState = {
   voltageClasses: [],
   activeFilter: null
@@ -60,39 +60,57 @@ async function main() {
     initMapLayers(map);
     setupUIBasemapSwitcher(map);
     setupAttributeFilter(map);
-    setupCitySearch(map); // Initialize City Search
+    setupCitySearch(map);
+    wireLegendTogglesOnce(map, window.appState.voltageClasses);
+  });
+
+  // AUTO-RECOVERY: Automatically re-add layers if basemap wipes them out
+  map.on("styledata", () => {
+    if (map.isStyleLoaded() && !map.getSource("substations") && window.appState.voltageClasses.length > 0) {
+      initMapLayers(map);
+    }
   });
 }
 
+// 1. Initialize Map Layers and Restore Checkbox States
 function initMapLayers(map) {
   const drawOrder = [...window.appState.voltageClasses].reverse();
-  for (const vc of drawOrder) addVoltageLayer(map, vc);
-  addSubstationsLayer(map);
-  addGenerationLayer(map);
-  wireLegendToggles(map, window.appState.voltageClasses);
   
-  // Re-apply filter if user just switched the basemap
+  // Re-add Voltage Lines
+  for (const vc of drawOrder) {
+    addVoltageLayer(map, vc);
+    const cb = document.querySelector(`input[data-voltage="${vc.id}"]`);
+    if (cb && !cb.checked) map.setLayoutProperty(`lines-${vc.id}-layer`, "visibility", "none");
+  }
+
+  // Re-add Substations
+  addSubstationsLayer(map);
+  const subCb = document.querySelector(`input[data-layer="substations"]`);
+  if (subCb && !subCb.checked) map.setLayoutProperty("substations-layer", "visibility", "none");
+
+  // Re-add Generation Plants
+  addGenerationLayer(map);
+  const genCb = document.querySelector(`input[data-layer="generation"]`);
+  if (genCb && !genCb.checked) map.setLayoutProperty("generation-layer", "visibility", "none");
+
+  // Re-apply Filters
   if (window.appState.activeFilter) {
      applyFilterToAll(map, window.appState.activeFilter);
   }
 }
 
-// 1. Basemap Switcher Logic
+// 2. Basemap Switcher Logic
 function setupUIBasemapSwitcher(map) {
   const radios = document.querySelectorAll('input[name="basemap"]');
   radios.forEach((radio) => {
     radio.addEventListener('change', (e) => {
       const selectedStyle = e.target.value === 'satellite' ? SATELLITE_STYLE : POSITRON_STYLE;
       map.setStyle(selectedStyle);
-      
-      map.once('style.load', () => {
-        initMapLayers(map);
-      });
     });
   });
 }
 
-// 2. Attribute Filter Logic
+// 3. Attribute Filter Logic
 function setupAttributeFilter(map) {
   const applyBtn = document.getElementById('apply-filter');
   const clearBtn = document.getElementById('clear-filter');
@@ -126,7 +144,7 @@ function applyFilterToAll(map, filterExpr) {
    });
 }
 
-// 3. City Search Logic (OSM Nominatim API bound to India)
+// 4. City Search Logic
 function setupCitySearch(map) {
   const searchInput = document.getElementById('search-city-input');
   const searchBtn = document.getElementById('search-city-btn');
@@ -139,21 +157,12 @@ function setupCitySearch(map) {
       searchBtn.innerText = "Searching...";
       searchBtn.disabled = true;
 
-      // Fetch from Nominatim API restricted to India (countrycodes=in)
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=1`);
       const data = await response.json();
 
       if (data && data.length > 0) {
         const result = data[0];
-        const lat = parseFloat(result.lat);
-        const lon = parseFloat(result.lon);
-        
-        // Smoothly fly to the searched city location
-        map.flyTo({
-          center: [lon, lat],
-          zoom: 11,
-          essential: true
-        });
+        map.flyTo({ center: [parseFloat(result.lon), parseFloat(result.lat)], zoom: 11, essential: true });
       } else {
         alert("City not found in India! Please try another name.");
       }
@@ -166,24 +175,15 @@ function setupCitySearch(map) {
     }
   });
 
-  // Enable search on pressing Enter key
-  searchInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      searchBtn.click();
-    }
-  });
+  searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBtn.click(); });
 }
 
-// ---- Layer Setup Functions ----
+// ---- Layer Generators & Events ----
 function addVoltageLayer(map, vc) {
   const sourceId = `lines-${vc.id}`;
   const layerId = `lines-${vc.id}-layer`;
 
-  map.addSource(sourceId, {
-    type: "geojson",
-    data: `data/${vc.geojson_filename}`,
-    promoteId: "osm_id",
-  });
+  map.addSource(sourceId, { type: "geojson", data: `data/${vc.geojson_filename}`, promoteId: "osm_id" });
 
   const widthScale = vc.id === "unknown" ? 0.6 : voltageWidthScale(vc.voltage_v);
   const paint = {
@@ -256,13 +256,26 @@ function renderLegend(voltageClasses, meta) {
   });
 }
 
-function wireLegendToggles(map, voltageClasses) {
+function wireLegendTogglesOnce(map, voltageClasses) {
   for (const vc of voltageClasses) {
     const cb = document.querySelector(`input[data-voltage="${vc.id}"]`);
-    if (!cb) continue;
-    cb.addEventListener("change", () => {
-      map.setLayoutProperty(`lines-${vc.id}-layer`, "visibility", cb.checked ? "visible" : "none");
-    });
+    if (cb) {
+      cb.addEventListener("change", () => {
+        if (map.getLayer(`lines-${vc.id}-layer`)) map.setLayoutProperty(`lines-${vc.id}-layer`, "visibility", cb.checked ? "visible" : "none");
+      });
+    }
+  }
+  const subCb = document.querySelector(`input[data-layer="substations"]`);
+  if (subCb) {
+     subCb.addEventListener("change", () => {
+        if (map.getLayer("substations-layer")) map.setLayoutProperty("substations-layer", "visibility", subCb.checked ? "visible" : "none");
+     });
+  }
+  const genCb = document.querySelector(`input[data-layer="generation"]`);
+  if (genCb) {
+     genCb.addEventListener("change", () => {
+        if (map.getLayer("generation-layer")) map.setLayoutProperty("generation-layer", "visibility", genCb.checked ? "visible" : "none");
+     });
   }
 }
 

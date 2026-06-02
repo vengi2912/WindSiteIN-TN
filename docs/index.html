@@ -26,36 +26,6 @@
 
     <main id="map" aria-label="India transmission grid map"></main>
     
-    <div id="ui-container">
-      
-      <div class="map-ui-box">
-        <div class="ui-title">Basemap</div>
-        <label><input type="radio" name="basemap" value="positron" checked> Light Map</label>
-        <label><input type="radio" name="basemap" value="satellite"> Google Satellite</label>
-      </div>
-
-      <div class="map-ui-box">
-        <div class="ui-title">Filter Features</div>
-        <select id="filter-field" class="ui-input">
-          <option value="operator">Operator (Company)</option>
-          <option value="name">Line / Plant Name</option>
-          <option value="voltage">Voltage</option>
-        </select>
-        <input type="text" id="filter-value" class="ui-input" placeholder="Type exact value..." />
-        <div class="ui-buttons">
-          <button id="apply-filter" class="btn-primary">Apply</button>
-          <button id="clear-filter" class="btn-secondary">Clear</button>
-        </div>
-      </div>
-
-      <div class="map-ui-box">
-        <div class="ui-title">Search City</div>
-        <input type="text" id="search-city-input" class="ui-input" placeholder="e.g. Chennai, Trichy..." />
-        <button id="search-city-btn" class="btn-primary" style="width: 100%;">Search City</button>
-      </div>
-      
-    </div>
-
     <aside id="legend" class="legend" aria-label="Legend and layer controls">
       <h2>Voltage</h2>
       <ul id="voltage-list" class="layer-list">
@@ -80,6 +50,35 @@
       </ul>
 
       <p class="meta-line" id="meta-line">Loading…</p>
+
+      <hr class="divider" />
+
+      <h2>Filter Features</h2>
+      <div class="ui-control-group">
+        <select id="filter-field" class="ui-input">
+          <option value="operator">Operator (Company)</option>
+          <option value="name">Line / Plant Name</option>
+          <option value="voltage">Voltage</option>
+        </select>
+        <input type="text" id="filter-value" class="ui-input" placeholder="Type exact value..." />
+        <div class="ui-buttons">
+          <button id="apply-filter" class="btn-primary">Apply</button>
+          <button id="clear-filter" class="btn-secondary">Clear</button>
+        </div>
+      </div>
+
+      <h2>Search City</h2>
+      <div class="ui-control-group">
+        <input type="text" id="search-city-input" class="ui-input" placeholder="e.g. Chennai, Trichy..." />
+        <button id="search-city-btn" class="btn-primary" style="width: 100%;">Search City</button>
+      </div>
+
+      <h2>Basemap</h2>
+      <div class="ui-control-group basemap-options">
+        <label><input type="radio" name="basemap" value="positron" checked> Light Map</label>
+        <label><input type="radio" name="basemap" value="satellite"> Google Satellite</label>
+      </div>
+
     </aside>
 
     <footer class="attrib">

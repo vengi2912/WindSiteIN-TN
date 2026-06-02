@@ -306,34 +306,62 @@ body {
   color: var(--muted);
 }
 /* Combined Map UI Container (Basemap, Filter & City Search) */
-#ui-container {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  z-index: 1000;
-  max-height: calc(100vh - 100px);
-  overflow-y: auto;
-  padding-right: 3px;
+/* Custom Legend Controls (Filter, Search, Basemap) */
+.divider {
+  margin: 15px 0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
 }
-.map-ui-box {
-  background: white;
-  padding: 12px;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+.ui-control-group {
+  margin-bottom: 15px;
   font-family: system-ui, -apple-system, sans-serif;
-  font-size: 13px;
-  color: #333;
-  width: 190px;
 }
-.ui-title { font-weight: bold; margin-bottom: 8px; font-size: 13px; color: #111; }
-.map-ui-box label { display: flex; align-items: center; cursor: pointer; margin-bottom: 5px; }
-.map-ui-box input[type="radio"] { margin-right: 8px; cursor: pointer; }
-.ui-input { width: 100%; margin-bottom: 8px; padding: 6px; font-size: 12px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
-.ui-buttons { display: flex; gap: 5px; }
-.btn-primary { flex: 1; cursor: pointer; padding: 6px; background: #0078d4; color: white; border: none; border-radius: 4px; font-size: 12px; font-weight: 500; }
+.ui-input {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 6px;
+  font-size: 12px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+.ui-buttons {
+  display: flex;
+  gap: 5px;
+}
+.btn-primary {
+  flex: 1;
+  cursor: pointer;
+  padding: 6px;
+  background: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
 .btn-primary:hover { background: #005a9e; }
-.btn-secondary { flex: 1; cursor: pointer; padding: 6px; background: #f3f2f1; color: #333; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+.btn-secondary {
+  flex: 1;
+  cursor: pointer;
+  padding: 6px;
+  background: #f3f2f1;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+}
 .btn-secondary:hover { background: #edebe9; }
+
+.basemap-options label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: #333;
+}
+.basemap-options input[type="radio"] {
+  margin-right: 8px;
+  cursor: pointer;
+}
