@@ -1,0 +1,31 @@
+{
+  "built_at": "2026-06-02T07:22:38+00:00",
+  "line_counts": {
+    "500kv": 84,
+    "hvdc": 0,
+    "220kv": 11218,
+    "132kv": 8808,
+    "66kv": 7387
+  },
+  "line_lengths_km": {
+    "500kv": 4765.0,
+    "hvdc": 0.0,
+    "220kv": 116937.1,
+    "132kv": 112136.8,
+    "66kv": 39383.7
+  },
+  "substation_count": 16960,
+  "generation_count": 1218,
+  "regression_warnings": [
+    "500kv: total length changed by >20% (7468 -> 4765 km)",
+    "hvdc: total length changed by >20% (888 -> 0 km)",
+    "220kv: total length changed by >20% (6855 -> 116937 km)",
+    "132kv: total length changed by >20% (20062 -> 112137 km)",
+    "66kv: total length changed by >20% (2361 -> 39384 km)",
+    "500kv: line count changed by >20% (229 -> 84)",
+    "hvdc: line count changed by >20% (5 -> 0)",
+    "220kv: line count changed by >20% (319 -> 11218)",
+    "132kv: line count changed by >20% (1432 -> 8808)",
+    "66kv: line count changed by >20% (125 -> 7387)"
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "$schema_comment": "Canonical voltage classes for OpenGridPK. Used by pipeline (filtering & file naming) and site (legend & layer paint). 765 kV intentionally omitted: as of 2026 there are no PK 765 kV lines tagged in OSM. Lines without a parseable voltage tag are dropped from the output.",
+  "classes": [
+    {
+      "id": "500kv",
+      "label": "500 kV",
+      "voltage_v": 500000,
+      "is_hvdc": false,
+      "color": "#F46036",
+      "line_dash": null,
+      "default_visible": true,
+      "min_zoom_visible": 4,
+      "geojson_filename": "lines_500kv.geojson"
+    },
+    {
+      "id": "hvdc",
+      "label": "±660 kV HVDC",
+      "voltage_v": 660000,
+      "is_hvdc": true,
+      "color": "#000000",
+      "line_dash": [3, 2],
+      "default_visible": true,
+      "min_zoom_visible": 4,
+      "geojson_filename": "lines_hvdc.geojson"
+    },
+    {
+      "id": "220kv",
+      "label": "220 kV",
+      "voltage_v": 220000,
+      "is_hvdc": false,
+      "color": "#2E8B57",
+      "line_dash": null,
+      "default_visible": true,
+      "min_zoom_visible": 5,
+      "geojson_filename": "lines_220kv.geojson"
+    },
+    {
+      "id": "132kv",
+      "label": "132 kV",
+      "voltage_v": 132000,
+      "is_hvdc": false,
+      "color": "#3D9BE9",
+      "line_dash": null,
+      "default_visible": true,
+      "min_zoom_visible": 6,
+      "geojson_filename": "lines_132kv.geojson"
+    },
+    {
+      "id": "66kv",
+      "label": "66 kV",
+      "voltage_v": 66000,
+      "is_hvdc": false,
+      "color": "#F2C744",
+      "line_dash": null,
+      "default_visible": true,
+      "min_zoom_visible": 7,
+      "geojson_filename": "lines_66kv.geojson"
+    }
+  ]
+}
