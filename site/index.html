@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Interactive map of wind-farm siting constraint layers for India — powerlines, roads, protected areas, water, heritage sites, and more. Open data from OpenStreetMap."
+    />
+    <title>WindSiteIN — wind farm siting constraints, on one map</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-name">WindSiteIN</span>
+        <span class="brand-tag">Wind farm siting constraints for India, on one map.</span>
+      </div>
+      <button id="legend-toggle" class="icon-btn" aria-label="Toggle legend" title="Toggle legend">
+        ☰
+      </button>
+    </header>
+
+    <main id="map" aria-label="India wind siting constraints map"></main>
+
+    <aside id="legend" class="legend" aria-label="Legend and layer controls">
+      <div class="legend-controls">
+        <button id="select-all" class="text-btn">Select all available</button>
+        <button id="select-none" class="text-btn">Clear</button>
+      </div>
+      <div id="layer-groups"><!-- populated by app.js from data/constraints.json --></div>
+      <p class="meta-line" id="meta-line">Loading…</p>
+    </aside>
+
+    <footer class="attrib">
+      © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+      (ODbL) · Grey/disabled toggles mark layers with no open India-wide GIS source — hover for why.
+    </footer>
+
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

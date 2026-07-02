@@ -1,0 +1,389 @@
+{
+  "$schema_note": "geometry: point|line|polygon|raster. available: true = fetchable from OSM/Overpass for India today. false = no open India-wide GIS source exists (see source_note); the site will still show the toggle, greyed out, with the note as a tooltip.",
+  "groups": [
+    {
+      "id": "linear_infra",
+      "label": "Linear infrastructure",
+      "layers": [
+        {
+          "id": "powerlines",
+          "label": "Powerlines",
+          "geometry": "line",
+          "available": true,
+          "color": "#e6194b",
+          "overpass": "way[\"power\"~\"^(line|minor_line|cable)$\"]",
+          "source_note": "OSM power=line/minor_line/cable. India OSM coverage is decent for transmission, sparse for LT distribution."
+        },
+        {
+          "id": "highway",
+          "label": "Highway",
+          "geometry": "line",
+          "available": true,
+          "color": "#f58231",
+          "overpass": "way[\"highway\"~\"^(motorway|trunk|primary|secondary)$\"]",
+          "source_note": "OSM highway=motorway/trunk/primary/secondary (National & State Highways)."
+        },
+        {
+          "id": "road",
+          "label": "Road",
+          "geometry": "line",
+          "available": true,
+          "color": "#fabed4",
+          "overpass": "way[\"highway\"~\"^(tertiary|unclassified|residential|service|track)$\"]",
+          "source_note": "OSM lower-order road classes. Very dense — recommend AOI-scoped fetch, not country-wide."
+        },
+        {
+          "id": "railway",
+          "label": "Railway",
+          "geometry": "line",
+          "available": true,
+          "color": "#4363d8",
+          "overpass": "way[\"railway\"=\"rail\"]",
+          "source_note": "OSM railway=rail. Good coverage for Indian Railways broad/metre gauge network."
+        },
+        {
+          "id": "fuel_pipeline",
+          "label": "Fuel Pipeline",
+          "geometry": "line",
+          "available": true,
+          "color": "#9a6324",
+          "overpass": "way[\"man_made\"=\"pipeline\"][\"substance\"~\"^(oil|fuel|petroleum)$\"]",
+          "source_note": "OSM man_made=pipeline substance=oil/fuel. Coverage patchy; cross-check against PNGRB/PPAC maps for India."
+        },
+        {
+          "id": "gas_pipeline",
+          "label": "Gas Pipeline",
+          "geometry": "line",
+          "available": true,
+          "color": "#808000",
+          "overpass": "way[\"man_made\"=\"pipeline\"][\"substance\"=\"gas\"]",
+          "source_note": "OSM man_made=pipeline substance=gas. Coverage patchy; cross-check against PNGRB/GAIL maps."
+        },
+        {
+          "id": "phone_lines",
+          "label": "Phone Lines",
+          "geometry": "line",
+          "available": false,
+          "color": "#a9a9a9",
+          "overpass": "way[\"telecom\"=\"line\"]",
+          "source_note": "OSM has almost no telecom=line coverage for India. If included, expect near-empty output; treat as unavailable in practice."
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "label": "Water",
+      "layers": [
+        {
+          "id": "river_streams",
+          "label": "River/Streams",
+          "geometry": "line",
+          "available": true,
+          "color": "#0082c8",
+          "overpass": "way[\"waterway\"~\"^(river|stream|canal)$\"]",
+          "source_note": "OSM waterway=river/stream/canal."
+        },
+        {
+          "id": "coastline",
+          "label": "Coastline",
+          "geometry": "line",
+          "available": true,
+          "color": "#000075",
+          "overpass": "way[\"natural\"=\"coastline\"]",
+          "source_note": "OSM natural=coastline. Reliable for India."
+        },
+        {
+          "id": "waterbodies",
+          "label": "Waterbodies",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#46f0f0",
+          "overpass": "way[\"natural\"=\"water\"];relation[\"natural\"=\"water\"]",
+          "source_note": "OSM natural=water (lakes, tanks, reservoirs)."
+        },
+        {
+          "id": "ponds",
+          "label": "Ponds",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#5adfe0",
+          "overpass": "way[\"natural\"=\"water\"][\"water\"=\"pond\"];relation[\"natural\"=\"water\"][\"water\"=\"pond\"]",
+          "source_note": "OSM natural=water + water=pond subtype."
+        },
+        {
+          "id": "wetland",
+          "label": "Wetland",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#3cb44b",
+          "overpass": "way[\"natural\"=\"wetland\"];relation[\"natural\"=\"wetland\"]",
+          "source_note": "OSM natural=wetland. For Ramsar-site precision, cross-check against MoEFCC's official Ramsar list."
+        },
+        {
+          "id": "water_resources_management",
+          "label": "Water Resources Management",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "No open India-wide GIS layer. Held by Central Water Commission / State Water Resources Departments, not published as WFS/OSM."
+        },
+        {
+          "id": "protected_watershed",
+          "label": "Protected Watershed",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "No open India-wide GIS layer. Notified watershed boundaries sit with State Forest/Watershed departments."
+        }
+      ]
+    },
+    {
+      "id": "land_protected",
+      "label": "Land use & protected areas",
+      "layers": [
+        {
+          "id": "park",
+          "label": "Park",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#3cb44b",
+          "overpass": "way[\"leisure\"=\"park\"];relation[\"leisure\"=\"park\"]",
+          "source_note": "OSM leisure=park (urban/recreational parks, not national parks)."
+        },
+        {
+          "id": "protected_areas",
+          "label": "Protected Areas",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#008080",
+          "overpass": "way[\"boundary\"=\"protected_area\"];relation[\"boundary\"=\"protected_area\"]",
+          "source_note": "OSM boundary=protected_area (IUCN categories). Cross-check against WII/MoEFCC's National Wildlife Database for legal precision."
+        },
+        {
+          "id": "wildlife",
+          "label": "Wildlife (Sanctuaries/National Parks)",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#469990",
+          "overpass": "way[\"boundary\"=\"protected_area\"][\"protect_class\"~\"^(2|4)$\"];relation[\"boundary\"=\"protected_area\"][\"protect_class\"~\"^(2|4)$\"]",
+          "source_note": "Approximation via protect_class 2 (National Park) / 4 (Wildlife Sanctuary). Authoritative source is WII/MoEFCC, not fully mirrored in OSM."
+        },
+        {
+          "id": "natural_areas",
+          "label": "Natural Areas",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#aaffc3",
+          "overpass": "way[\"natural\"=\"wood\"];relation[\"natural\"=\"wood\"];way[\"leisure\"=\"nature_reserve\"];relation[\"leisure\"=\"nature_reserve\"]",
+          "source_note": "OSM natural=wood + leisure=nature_reserve."
+        },
+        {
+          "id": "flora_and_fauna",
+          "label": "Flora And Fauna",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "Not a discrete OSM layer — conceptually overlaps Wildlife/Protected Areas/Natural Areas above. No separate India-wide open dataset."
+        },
+        {
+          "id": "quarries",
+          "label": "Quarries",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#e6beff",
+          "overpass": "way[\"landuse\"=\"quarry\"];relation[\"landuse\"=\"quarry\"]",
+          "source_note": "OSM landuse=quarry."
+        },
+        {
+          "id": "mining",
+          "label": "Mining",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#911eb4",
+          "overpass": "way[\"landuse\"=\"quarry\"];relation[\"landuse\"=\"quarry\"];node[\"man_made\"=\"mineshaft\"]",
+          "source_note": "OSM landuse=quarry + man_made=mineshaft. For lease-boundary precision use IBM (Indian Bureau of Mines) data, not open GIS."
+        },
+        {
+          "id": "building_residential",
+          "label": "Building/Residential",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#ffd8b1",
+          "overpass": "way[\"building\"];way[\"landuse\"=\"residential\"];relation[\"landuse\"=\"residential\"]",
+          "source_note": "OSM building=* + landuse=residential. Extremely dense — strongly recommend AOI/bbox scoping, not country-wide fetch."
+        },
+        {
+          "id": "municipal_designated_residential",
+          "label": "Municipal Designated Residential Areas",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": "way[\"landuse\"=\"residential\"];relation[\"landuse\"=\"residential\"]",
+          "source_note": "Approximated by landuse=residential above, but true municipal Master Plan zoning is not in OSM — held by local Development Authorities."
+        },
+        {
+          "id": "federal_lands",
+          "label": "Federal Lands",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#e6194b",
+          "overpass": "way[\"landuse\"=\"military\"];relation[\"landuse\"=\"military\"];way[\"military\"];relation[\"military\"]",
+          "source_note": "Approximated via landuse=military (Defence/Cantonment lands). India has no single public 'federal land' registry equivalent to Canadian Crown Land."
+        },
+        {
+          "id": "crown_land",
+          "label": "Crown Land",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "Not applicable to India — Crown Land is a Canadian/Commonwealth-realm land tenure concept. Closest Indian analogue (Government Revenue Land) has no open GIS layer."
+        }
+      ]
+    },
+    {
+      "id": "cultural_heritage",
+      "label": "Cultural & heritage",
+      "layers": [
+        {
+          "id": "heritage",
+          "label": "Heritage",
+          "geometry": "point",
+          "available": true,
+          "color": "#800000",
+          "overpass": "node[\"historic\"];way[\"historic\"];node[\"heritage\"];way[\"heritage\"]",
+          "source_note": "OSM historic=* / heritage=*."
+        },
+        {
+          "id": "archaeological_sites",
+          "label": "Archaeological Sites",
+          "geometry": "point",
+          "available": true,
+          "color": "#aaffc3",
+          "overpass": "node[\"historic\"=\"archaeological_site\"];way[\"historic\"=\"archaeological_site\"]",
+          "source_note": "OSM historic=archaeological_site. For ASI-notified sites specifically, cross-check the ASI's own protected monuments list."
+        },
+        {
+          "id": "goods_cultural_interest_bic_brl",
+          "label": "Goods of Cultural Interest (BIC/BRL)",
+          "geometry": "point",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "BIC/BRL are Spanish and French heritage-register designations — not applicable to India. Use Heritage/Archaeological Sites above for the Indian equivalent (ASI-protected monuments)."
+        }
+      ]
+    },
+    {
+      "id": "ecological",
+      "label": "Ecological & wildlife-specific",
+      "layers": [
+        {
+          "id": "birds",
+          "label": "Birds (Important Bird Areas)",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "India's Important Bird & Biodiversity Areas are maintained by BNHS/BirdLife International as a licensed dataset, not open GIS."
+        },
+        {
+          "id": "fish_habitats",
+          "label": "Fish Habitats",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "No open India-wide GIS layer. Held by CMFRI / State Fisheries Departments."
+        },
+        {
+          "id": "caribou_mgmt_core_areas",
+          "label": "Caribou Management Area & Core Caribou Areas",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "Not applicable — caribou are a North American/Arctic species; this is a Newfoundland & Labrador dataset with no Indian equivalent."
+        },
+        {
+          "id": "ebsa_marine",
+          "label": "Ecologically/Biologically Significant Marine Area",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "India's CBD-designated EBSAs exist only as MoEFCC/ZSI reports/maps, not open GIS. Relevant only for offshore wind."
+        },
+        {
+          "id": "historical_sar",
+          "label": "Historical SAR (Species at Risk)",
+          "geometry": "point",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "Not applicable — this is a Canadian (ECCC) Species at Risk historic-occurrence dataset with no Indian equivalent."
+        }
+      ]
+    },
+    {
+      "id": "boundaries_infra",
+      "label": "Boundaries & existing development",
+      "layers": [
+        {
+          "id": "municipal_boundary",
+          "label": "Municipal Boundary",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#333333",
+          "overpass": "relation[\"boundary\"=\"administrative\"][\"admin_level\"=\"8\"]",
+          "source_note": "OSM admin_level=8 (ULB/Municipal/Panchayat boundaries). Coverage is patchy outside major cities."
+        },
+        {
+          "id": "existing_infrastructure",
+          "label": "Existing Infrastructure",
+          "geometry": "polygon",
+          "available": true,
+          "color": "#f032e6",
+          "overpass": "node[\"power\"=\"plant\"];way[\"power\"=\"plant\"];relation[\"power\"=\"plant\"];node[\"power\"=\"substation\"];way[\"power\"=\"substation\"];way[\"landuse\"=\"industrial\"]",
+          "source_note": "OSM power plants/substations + landuse=industrial as a proxy for built-up energy/industrial infrastructure."
+        },
+        {
+          "id": "other_wind_farms",
+          "label": "Other Wind Farms",
+          "geometry": "point",
+          "available": true,
+          "color": "#42d4f4",
+          "overpass": "node[\"power\"=\"plant\"][\"plant:source\"=\"wind\"];way[\"power\"=\"plant\"][\"plant:source\"=\"wind\"];relation[\"power\"=\"plant\"][\"plant:source\"=\"wind\"];node[\"power\"=\"generator\"][\"generator:source\"=\"wind\"]",
+          "source_note": "OSM power=plant/generator with wind source tags. Cross-check against MNRE/state nodal agency wind atlas for completeness."
+        },
+        {
+          "id": "service_nl",
+          "label": "Service_NL",
+          "geometry": "polygon",
+          "available": false,
+          "color": "#999999",
+          "overpass": null,
+          "source_note": "Not applicable — Service NL is a Newfoundland & Labrador (Canada) government registry/regulator with no Indian equivalent."
+        }
+      ]
+    },
+    {
+      "id": "terrain",
+      "label": "Terrain (DEM-derived)",
+      "layers": [
+        {
+          "id": "slope",
+          "label": "Slope",
+          "geometry": "raster",
+          "available": false,
+          "color": "#7f7f7f",
+          "overpass": null,
+          "source_note": "Not an Overpass/OSM layer. Compute from a projected (UTM) DEM — Copernicus GLO-30, ALOS PALSAR 12.5m, or CartoDEM — thresholded at 35% slope. Needs a separate raster pipeline, not this Overpass-based one."
+        }
+      ]
+    }
+  ]
+}
